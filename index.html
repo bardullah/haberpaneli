@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Monitor</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #000; --card: #111; --accent: #2563eb; --text: #fff; --gray: #888; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; }
+        .layout { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+        .sidebar { background: #050505; border-right: 1px solid #222; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        .brand { font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px #10b981; }
+        .widget { background: #000; border: 1px solid #222; border-radius: 12px; overflow: hidden; }
+        .main { padding: 30px; overflow-y: auto; }
+        .nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn { background: var(--card); border: 1px solid #333; color: var(--gray); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn:hover { color: #fff; border-color: #fff; }
+        .btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: var(--card); border: 1px solid #222; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; height: 200px; text-decoration: none; color: white; transition: 0.2s; }
+        .card:hover { transform: translateY(-5px); border-color: var(--accent); }
+        .meta { font-size: 0.7rem; color: var(--accent); font-weight: 800; text-transform: uppercase; margin-bottom: 10px; }
+        .title { font-size: 1rem; font-weight: 600; line-height: 1.4; margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+        .date { margin-top: auto; font-size: 0.75rem; color: var(--gray); }
+        
+        /* Hava Durumu */
+        .weather-box { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid #222; }
+        .w-temp { font-size: 1.5rem; font-weight: bold; }
+        .w-loc { font-size: 0.8rem; color: var(--gray); font-weight: bold; }
+
+        @media (max-width: 768px) { .layout { grid-template-columns: 1fr; height: auto; } .sidebar { height: auto; } body { overflow-y: auto; } }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="brand"><span class="material-icons-round">dashboard</span> NEXUS <div class="dot"></div></div>
+        
+        <div class="widget" style="height: 400px;">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+                { "colorTheme": "dark", "dateRange": "12M", "showChart": false, "locale": "en", "largeChartUrl": "", "isTransparent": true, "width": "100%", "height": "100%", "tabs": [ { "title": "Markets", "symbols": [ { "s": "FX:USDTRY", "d": "USD/TRY" }, { "s": "FX:EURTRY", "d": "EUR/TRY" }, { "s": "FX_IDC:XAUTRY", "d": "Gold (Gr)" }, { "s": "BINANCE:BTCUSDT", "d": "Bitcoin" } ] } ] }
+                </script>
+            </div>
+        </div>
+
+        <div class="weather-box">
+            <div><div class="w-loc">LEVENT</div><div class="w-temp" id="t-levent">--°</div></div>
+            <span class="material-icons-round" style="color:#2563eb">wb_sunny</span>
+        </div>
+        <div class="weather-box">
+            <div><div class="w-loc">KADIKOY</div><div class="w-temp" id="t-kadikoy">--°</div></div>
+            <span class="material-icons-round" style="color:#2563eb">wb_cloudy</span>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="nav">
+            <button class="btn active" onclick="load('latvia')">Latvia</button>
+            <button class="btn" onclick="load('lithuania')">Lithuania</button>
+            <button class="btn" onclick="load('estonia')">Estonya</button>
+            <button class="btn" onclick="load('tech')">Tech</button>
+            <button class="btn" onclick="load('eu')">EU</button>
+        </div>
+        <div id="grid" class="grid"></div>
+    </main>
+</div>
+
+<script>
+    async function load(topic) {
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '<div style="color:#888">Loading...</div>';
+
+        try {
+            // BURASI ÖNEMLİ: Artık kendi sunucumuza istek atıyoruz!
+            const res = await fetch(`/api/news?topic=${topic}`);
+            const data = await res.json();
+            
+            grid.innerHTML = '';
+            data.forEach(item => {
+                const date = new Date(item.pubDate).toLocaleDateString('tr-TR');
+                grid.innerHTML += `
+                <a href="${item.link}" target="_blank" class="card">
+                    <div class="meta">${topic}</div>
+                    <h3 class="title">${item.title}</h3>
+                    <div class="date">${date}</div>
+                </a>`;
+            });
+        } catch (e) { grid.innerHTML = 'Error loading news.'; }
+    }
+
+    // Hava Durumu (Open-Meteo)
+    async function weather() {
+        const locs = [{id:'levent', lat:41.08, lon:29.01}, {id:'kadikoy', lat:40.99, lon:29.02}];
+        for(let l of locs) {
+            let r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${l.lat}&longitude=${l.lon}&current=temperature_2m`);
+            let d = await r.json();
+            document.getElementById(`t-${l.id}`).innerText = Math.round(d.current.temperature_2m) + "°C";
+        }
+    }
+
+    weather();
+    document.querySelector('.btn').click(); // Başlat
+</script>
+</body>
+</html>
